@@ -1,137 +1,51 @@
+import datetime
 import logging as logme
 
-class user:
+
+class User:
     type = "user"
 
     def __init__(self):
         pass
 
-def inf(ur, _type):
-    logme.debug(__name__+':inf')
-    try:
-        group = ur.find("div", "user-actions btn-group not-following ")
-        if group == None:
-            group = ur.find("div", "user-actions btn-group not-following")
-        if group == None:
-            group = ur.find("div", "user-actions btn-group not-following protected")
-    except Exception as e:
-        print("Error: " + str(e))
+User_formats = {
+    'join_date': '%Y-%m-%d',
+    'join_time': '%H:%M:%S %Z'
+}
 
-    if _type == "id":
-        ret = group["data-user-id"]
-    elif _type == "name":
-        ret = group["data-name"]
-    elif _type == "username":
-        ret = group["data-screen-name"]
-    elif _type == "private":
-        ret = group["data-protected"]
-        if ret == 'true':
-            ret = 1
-        else:
-            ret = 0
 
-    return ret
-
-def card(ur, _type):
-    logme.debug(__name__+':card')
-    if _type == "bio":
-        try:
-            ret = ur.find("p", "ProfileHeaderCard-bio u-dir").text.replace("\n", " ")
-        except:
-            ret = ""
-    elif _type == "location":
-        try:
-            ret = ur.find("span", "ProfileHeaderCard-locationText u-dir").text
-            ret = ret[15:].replace("\n", " ")[:-10]
-        except:
-            ret = ""
-    elif _type == "url":
-        try:
-            ret = ur.find("span", "ProfileHeaderCard-urlText u-dir").find("a")["title"]
-        except:
-            ret = ""
-
-    return ret
-
-def join(ur):
-    logme.debug(__name__+':join')
-    jd = ur.find("span", "ProfileHeaderCard-joinDateText js-tooltip u-dir")["title"]
-    return jd.split(" - ")
-
-def convertToInt(x):
-    logme.debug(__name__+':contertToInt')
-    multDict = {
-        "k" : 1000,
-        "m" : 1000000,
-        "b" : 1000000000,
-    }
-    try:
-        if ',' in x:
-            x = x.replace(',', '')
-        y = int(x)
-        return y
-    except:
-        pass
-
-    try:
-        y = float(str(x)[:-1])
-        y = y * multDict[str(x)[-1:].lower()]
-        return int(y)
-    except:
-        pass
-
-    return 0
-
-def stat(ur, _type):
-    logme.debug(__name__+':stat')
-    _class = f"ProfileNav-item ProfileNav-item--{_type}"
-    stat = ur.find("li", _class)
-    try :
-        return int(stat.find("span", "ProfileNav-value")["data-count"])
-    except AttributeError:
-        return 0
-
-def media(ur):
-    logme.debug(__name__+':media')
-    try:
-        media_count = ur.find("a", "PhotoRail-headingWithCount js-nav").text.strip().split(" ")[0]
-        return convertToInt(media_count)
-    except:
-        return 0
-
-def verified(ur):
-    logme.debug(__name__+':verified')
-    try:
-        is_verified = ur.find("span", "ProfileHeaderCard-badges").text
-        if "Verified account" in is_verified:
-            is_verified = 1
-        else:
-            is_verified = 0
-    except:
-        is_verified = 0
-
-    return is_verified
-
+# ur object must be a json from the endpoint https://api.twitter.com/graphql
 def User(ur):
-    logme.debug(__name__+':User')
-    u = user()
-    for img in ur.findAll("img", "Emoji Emoji--forText"):
-        img.replaceWith(img["alt"])
-    u.id = inf(ur, "id")
-    u.name = inf(ur, "name")
-    u.username = inf(ur, "username")
-    u.bio = card(ur, "bio")
-    u.location = card(ur, "location")
-    u.url = card(ur, "url")
-    u.join_date = join(ur)[1]
-    u.join_time = join(ur)[0]
-    u.tweets = stat(ur, "tweets is-active")
-    u.following = stat(ur, "following")
-    u.followers = stat(ur, "followers")
-    u.likes = stat(ur, "favorites")
-    u.media_count = media(ur)
-    u.is_private = inf(ur, "private")
-    u.is_verified = verified(ur)
-    u.avatar = ur.find("img", "ProfileAvatar-image")["src"]
-    u.background_image = ur.find('div',{'class':'ProfileCanopy-headerBg'}).find('img').get('src')
-    return u
+    logme.debug(__name__ + ':User')
+    if 'data' not in ur and 'user' not in ur['data']:
+        msg = 'malformed json! cannot be parsed to get user data'
+        logme.fatal(msg)
+        raise KeyError(msg)
+    _usr = User()
+    _usr.id = ur['data']['user']['rest_id']
+    _usr.name = ur['data']['user']['rest_id']['legacy']['name']
+    _usr.username = ur['data']['user']['rest_id']['legacy']['screen_name']
+    _usr.bio = ur['data']['user']['rest_id']['legacy']['description']
+    _usr.location = ur['data']['user']['rest_id']['legacy']['location']
+    _usr.url = ur['data']['user']['rest_id']['legacy']['screen_name']['url']
+    # parsing date to user-friendly format
+    _dt = ur['data']['user']['rest_id']['legacy']['created_at']
+    _dt = datetime.datetime.strptime(_dt, '%a %b %d %H:%M:%S %z %Y')
+    # date is of the format year,
+    _usr.join_date = _dt.strftime(User_formats['join_date'])
+    _usr.join_time = _dt.strftime(User_formats['join_time'])
+
+    # :type `int`
+    _usr.tweets = int(ur['data']['user']['rest_id']['legacy']['statuses_count'])
+    _usr.following = int(ur['data']['user']['rest_id']['legacy']['friends_count'])
+    _usr.followers = int(ur['data']['user']['rest_id']['legacy']['followers_count'])
+    _usr.likes = int(ur['data']['user']['rest_id']['legacy']['favourites_count'])
+    _usr.media_count = int(ur['data']['user']['rest_id']['legacy']['media_count'])
+
+    _usr.is_private = ur['data']['user']['rest_id']['legacy']['protected']
+    _usr.is_verified = ur['data']['user']['rest_id']['legacy']['verified']
+    _usr.avatar = ur['data']['user']['rest_id']['legacy']['profile_image_url_https']
+    _usr.background_image = ur['data']['user']['rest_id']['legacy']['profile_banner_url']
+    # TODO : future implementation
+    # legacy_extended_profile is also available in some cases which can be used to get DOB of user
+    return _usr

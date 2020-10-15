@@ -1,7 +1,7 @@
+import datetime, pandas as pd, warnings
 from time import strftime, localtime
-import pandas as pd
-import warnings
 from .elasticsearch import hour
+from twint.tweet import Tweet_formats
 
 Tweets_df = None
 Follow_df = None
@@ -26,25 +26,27 @@ weekdays = {
 
 _type = ""
 
-def _concat(df, type):
+def _concat(df, _type):
     if df is None:
-        df = pd.DataFrame(_object_blocks[type])
+        df = pd.DataFrame(_object_blocks[_type])
     else:
-        _df = pd.DataFrame(_object_blocks[type])
+        _df = pd.DataFrame(_object_blocks[_type])
         df = pd.concat([df, _df], sort=True)
     return df
 
-def _autoget(type):
+def _autoget(_type):
     global Tweets_df
     global Follow_df
     global User_df
 
-    if type == "tweet":
-        Tweets_df = _concat(Tweets_df, type)
-    if type == "followers" or type == "following":
-        Follow_df = _concat(Follow_df, type)
-    if type == "user":
-        User_df = _concat(User_df, type)
+    if _type == "tweet":
+        Tweets_df = _concat(Tweets_df, _type)
+    elif _type == "followers" or _type == "following":
+        Follow_df = _concat(Follow_df, _type)
+    elif _type == "user":
+        User_df = _concat(User_df, _type)
+    else:
+        error("[x] Wrong type of object passed")
 
 
 def update(object, config):
@@ -64,16 +66,18 @@ def update(object, config):
 
     if _type == "tweet":
         Tweet = object
-        day = weekdays[strftime("%A", localtime(Tweet.datetime))]
+        datetime_ms = datetime.datetime.strptime(Tweet.datetime, Tweet_formats['datetime']).timestamp() * 1000
+        day = weekdays[strftime("%A", localtime(datetime_ms/1000))]
         dt = f"{object.datestamp} {object.timestamp}"
         _data = {
             "id": str(Tweet.id),
             "conversation_id": Tweet.conversation_id,
-            "created_at": Tweet.datetime,
+            "created_at": datetime_ms,
             "date": dt,
             "timezone": Tweet.timezone,
             "place": Tweet.place,
             "tweet": Tweet.tweet,
+            "language": Tweet.lang,
             "hashtags": Tweet.hashtags,
             "cashtags": Tweet.cashtags,
             "user_id": Tweet.user_id,
@@ -81,9 +85,13 @@ def update(object, config):
             "username": Tweet.username,
             "name": Tweet.name,
             "day": day,
-            "hour": hour(Tweet.datetime),
+            "hour": hour(datetime_ms/1000),
             "link": Tweet.link,
-            "retweet": Tweet.retweet,
+            "urls": Tweet.urls,
+            "photos": Tweet.photos,
+            "video": Tweet.video,
+            "thumbnail": Tweet.thumbnail,
+            #"retweet": Tweet.retweet,
             "nlikes": int(Tweet.likes_count),
             "nreplies": int(Tweet.replies_count),
             "nretweets": int(Tweet.retweets_count),
@@ -92,11 +100,11 @@ def update(object, config):
             "near": Tweet.near,
             "geo": Tweet.geo,
             "source": Tweet.source,
-            "user_rt_id": Tweet.user_rt_id,
-            "user_rt": Tweet.user_rt,
-            "retweet_id": Tweet.retweet_id,
+            #"user_rt_id": Tweet.user_rt_id,
+            #"user_rt": Tweet.user_rt,
+            #"retweet_id": Tweet.retweet_id,
             "reply_to": Tweet.reply_to,
-            "retweet_date": Tweet.retweet_date,
+            #"retweet_date": Tweet.retweet_date,
             "translate": Tweet.translate,
             "trans_src": Tweet.trans_src,
             "trans_dest": Tweet.trans_dest
@@ -104,6 +112,10 @@ def update(object, config):
         _object_blocks[_type].append(_data)
     elif _type == "user":
         user = object
+        try:
+            background_image = user.background_image
+        except:
+            background_image = ""
         _data = {
             "id": user.id,
             "name": user.name,
@@ -122,7 +134,7 @@ def update(object, config):
             "private": user.is_private,
             "verified": user.is_verified,
             "avatar": user.avatar,
-            "background_image": user.background_image,
+            "background_image": background_image,
             }
         _object_blocks[_type].append(_data)
     elif _type == "followers" or _type == "following":

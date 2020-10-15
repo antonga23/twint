@@ -64,6 +64,7 @@ def createIndex(config, instance, **scope):
                         "place": {"type": "keyword"},
                         "location": {"type": "keyword"},
                         "tweet": {"type": "text"},
+                        "lang": {"type": "keyword"},
                         "hashtags": {"type": "keyword", "normalizer": "hashtag_normalizer"},
                         "cashtags": {"type": "keyword", "normalizer": "hashtag_normalizer"},
                         "user_id_str": {"type": "keyword"},
@@ -80,6 +81,7 @@ def createIndex(config, instance, **scope):
                         "nretweets": {"type": "integer"},
                         "quote_url": {"type": "text"},
                         "video": {"type":"integer"},
+                        "thumbnail": {"type":"text"},
                         "search": {"type": "text"},
                         "near": {"type": "text"},
                         "geo_near": {"type": "geo_point"},
@@ -97,7 +99,7 @@ def createIndex(config, instance, **scope):
                                 "username": {"type": "keyword"}
                             }
                         },
-                        "retweet_date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss"},
+                        "retweet_date": {"type": "date", "format": "yyyy-MM-dd HH:mm:ss", "ignore_malformed": True},
                         "urls": {"type": "keyword"},
                         "translate": {"type": "text"},
                         "trans_src": {"type": "keyword"},
@@ -223,6 +225,7 @@ def Tweet(Tweet, config):
                 "timezone": Tweet.timezone,
                 "place": Tweet.place,
                 "tweet": Tweet.tweet,
+                "language": Tweet.lang,
                 "hashtags": Tweet.hashtags,
                 "cashtags": Tweet.cashtags,
                 "user_id_str": Tweet.user_id_str,
@@ -254,6 +257,8 @@ def Tweet(Tweet, config):
         for photo in Tweet.photos:
             _photos.append(photo)
         j_data["_source"].update({"photos": _photos})
+    if Tweet.thumbnail:
+        j_data["_source"].update({"thumbnail": Tweet.thumbnail})
     if Tweet.mentions:
         _mentions = []
         for mention in Tweet.mentions:

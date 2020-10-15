@@ -15,7 +15,9 @@ def Tweet(config, t):
         output = output.replace("{urls}", ",".join(t.urls))
         output = output.replace("{photos}", ",".join(t.photos))
         output = output.replace("{video}", str(t.video))
+        output = output.replace("{thumbnail}", t.thumbnail)
         output = output.replace("{tweet}", t.tweet)
+        output = output.replace("{language}", t.lang)
         output = output.replace("{hashtags}", ",".join(t.hashtags))
         output = output.replace("{cashtags}", ",".join(t.cashtags))
         output = output.replace("{replies}", t.replies_count)
@@ -35,8 +37,9 @@ def Tweet(config, t):
         logme.debug(__name__+':Tweet:notFormat')
         output = f"{t.id_str} {t.datestamp} {t.timestamp} {t.timezone} "
 
-        if t.retweet:
-           output += "RT "
+        # TODO: someone who is familiar with this code, needs to take a look at what this is <also see tweet.py>
+        # if t.retweet:
+        #    output += "RT "
 
         output += f"<{t.username}> {t.tweet}"
 
@@ -71,6 +74,10 @@ def User(_format, u):
         output = output.replace("{private}", str(u.is_private))
         output = output.replace("{verified}", str(u.is_verified))
         output = output.replace("{avatar}", u.avatar)
+        if u.background_image:
+            output = output.replace("{background_image}", u.background_image)
+        else:
+            output = output.replace("{background_image}", "")
     else:
         logme.debug(__name__+':User:notFormat')
         output = f"{u.id} | {u.name} | @{u.username} | Private: "

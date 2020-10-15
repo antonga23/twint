@@ -9,8 +9,8 @@ def Conn(database):
     if database:
         print("[+] Inserting into Database: " + str(database))
         conn = init(database)
-        if isinstance(conn, str):
-            print(str)
+        if isinstance(conn, str): # error
+            print(conn)
             sys.exit(1)
     else:
         conn = ""
@@ -56,6 +56,7 @@ def init(db):
                     id integer not null,
                     id_str text not null,
                     tweet text default '',
+                    language text default '',
                     conversation_id text not null,
                     created_at integer not null,
                     date text not null,
@@ -75,6 +76,7 @@ def init(db):
                     cashtags text,
                     urls text,
                     photos text,
+                    thumbnail text,
                     quote_url text,
                     video integer,
                     geo text,
@@ -96,14 +98,14 @@ def init(db):
                     username text not null,
                     tweet_id integer not null,
                     retweet_id integer not null,
-                    retweet_date integer not null,
+                    retweet_date integer,
                     CONSTRAINT retweets_pk PRIMARY KEY(user_id, tweet_id),
                     CONSTRAINT user_id_fk FOREIGN KEY(user_id) REFERENCES users(id),
                     CONSTRAINT tweet_id_fk FOREIGN KEY(tweet_id) REFERENCES tweets(id)
                 );
         """
         cursor.execute(table_retweets)
-    
+
         table_reply_to = """
             CREATE TABLE IF NOT EXISTS
                 replies(
@@ -244,6 +246,7 @@ def tweets(conn, Tweet, config):
         entry = (Tweet.id,
                     Tweet.id_str,
                     Tweet.tweet,
+                    Tweet.lang,
                     Tweet.conversation_id,
                     Tweet.datetime,
                     Tweet.datestamp,
@@ -263,6 +266,7 @@ def tweets(conn, Tweet, config):
                     ",".join(Tweet.cashtags),
                     ",".join(Tweet.urls),
                     ",".join(Tweet.photos),
+                    Tweet.thumbnail,
                     Tweet.quote_url,
                     Tweet.video,
                     Tweet.geo,
@@ -272,7 +276,7 @@ def tweets(conn, Tweet, config):
                     Tweet.translate,
                     Tweet.trans_src,
                     Tweet.trans_dest)
-        cursor.execute('INSERT INTO tweets VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', entry)
+        cursor.execute('INSERT INTO tweets VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', entry)
 
         if config.Favorites:
             query = 'INSERT INTO favorites VALUES(?,?)'
@@ -282,7 +286,7 @@ def tweets(conn, Tweet, config):
             query = 'INSERT INTO retweets VALUES(?,?,?,?,?)'
             _d = datetime.timestamp(datetime.strptime(Tweet.retweet_date, "%Y-%m-%d %H:%M:%S"))
             cursor.execute(query, (int(Tweet.user_rt_id), Tweet.user_rt, Tweet.id, int(Tweet.retweet_id), _d))
-        
+
         if Tweet.reply_to:
             for reply in Tweet.reply_to:
                 query = 'INSERT INTO replies VALUES(?,?,?)'
